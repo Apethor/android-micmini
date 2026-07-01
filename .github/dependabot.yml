@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # Atualiza as GitHub Actions usadas nos workflows
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  # Atualiza dependencias Gradle (AGP, libs)
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

@@ -1,0 +1,29 @@
+name: Claude PR Review
+
+# Revisao automatica de todo PR pelo Claude (gate de qualidade, complementa o CI e o review humano).
+# Requer o secret ANTHROPIC_API_KEY (via `claude /install-github-app`).
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review this pull request for the MicMini Android app (raw-PCM mic over TCP, minSdk 23).
+            Focus on: correctness, resource/lifecycle management (AudioRecord, ServerSocket,
+            foreground Service), thread-safety of shared state, robustness (init failure, port in use,
+            client disconnect/reconnect), and Android 6 compatibility. Be concise and actionable;
+            post inline comments only where they add value, and acknowledge what is done well.
