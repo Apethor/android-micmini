@@ -1,7 +1,7 @@
 name: Claude
 
 # Assistente sob demanda: escreva "@claude ..." num comentario de issue/PR ou numa issue nova.
-# Requer o secret ANTHROPIC_API_KEY (rode `claude /install-github-app` no repo, que configura tudo).
+# Requer o secret CLAUDE_CODE_OAUTH_TOKEN (criado por `claude /install-github-app` via OAuth).
 on:
   issue_comment:
     types: [created]
@@ -27,4 +27,4 @@ jobs:
 
       - uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

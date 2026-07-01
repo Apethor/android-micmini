@@ -1,4 +1,4 @@
-package com.nubia.micmini;
+package com.apethor.micmini;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -14,25 +14,33 @@ import android.os.IBinder;
 import android.util.Log;
 
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
 /**
- * MicMini — captura o microfone e serve PCM cru por TCP (celular = servidor).
- * Formato do stream: PCM signed 16-bit LITTLE-ENDIAN, mono, {@link #SAMPLE_RATE} Hz.
- * O consumidor (ex.: no Orange Pi/Batocera) faz connect(ip, PORT) e lê os bytes direto.
- * Grava só enquanto há um cliente conectado (economiza bateria).
+ * MicMini — captures the microphone and serves raw PCM over TCP (the phone is the server).
+ * Wire format: PCM signed 16-bit LITTLE-ENDIAN, mono, {@link #SAMPLE_RATE} Hz — no header.
+ * A client just does connect(ip, {@link #PORT}) and reads the byte stream.
+ * Recording runs only while a client is connected (saves battery).
+ *
+ * NOTE: the stream is unauthenticated and unencrypted — intended for a trusted LAN.
+ * Set {@link #BIND_LOOPBACK} to true to listen on 127.0.0.1 only (use with `adb forward`).
  */
 public class MicService extends Service {
     public static final String TAG = "MicMini";
     public static final int PORT = 6000;
-    public static final int SAMPLE_RATE = 16000;   // Hz  (mude p/ 48000 se quiser fidelidade)
-    private static final int CHUNK = 1280;         // 40 ms @16k mono s16le -> baixa latência
+    public static final int SAMPLE_RATE = 16000;   // Hz. Fixed wire contract — if you change it,
+                                                   // change the client too (raw stream has no header).
+    private static final int CHUNK = 1280;         // 40 ms @16k mono s16le -> low latency
+
+    // false = listen on all interfaces (LAN use). true = 127.0.0.1 only (use with `adb forward`).
+    private static final boolean BIND_LOOPBACK = false;
 
     private volatile boolean running = false;
+    private volatile ServerSocket server;
     private Thread worker;
-    private ServerSocket server;
 
     @Override public IBinder onBind(Intent i) { return null; }
 
@@ -66,10 +74,14 @@ public class MicService extends Service {
 
     private void serverLoop() {
         try {
+            InetAddress bindAddr = BIND_LOOPBACK ? InetAddress.getLoopbackAddress() : null; // null = all
             server = new ServerSocket();
             server.setReuseAddress(true);
-            server.bind(new InetSocketAddress(PORT));
-            Log.i(TAG, "listening :" + PORT + "  " + SAMPLE_RATE + "Hz mono s16le");
+            server.bind(new InetSocketAddress(bindAddr, PORT));
+            Log.i(TAG, "listening on " + (BIND_LOOPBACK ? "127.0.0.1:" : "0.0.0.0:") + PORT
+                    + "  " + SAMPLE_RATE + "Hz mono s16le");
+            // One client at a time: while streaming to a client, further connections wait in the
+            // OS accept backlog and are served after the current one disconnects.
             while (running) {
                 Socket sock = server.accept();
                 Log.i(TAG, "client connected: " + sock.getRemoteSocketAddress());
@@ -83,7 +95,7 @@ public class MicService extends Service {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "server error", e);
+            if (running) Log.e(TAG, "server error", e);   // expected when closed on shutdown
         } finally {
             closeServer();
         }
@@ -98,6 +110,10 @@ public class MicService extends Service {
                 AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, recBuf);
         if (rec.getState() != AudioRecord.STATE_INITIALIZED) {
             rec.release();
+            // Keep the wire format fixed: rather than silently changing the rate (which would
+            // change pitch for the client), fail loudly. 16 kHz is widely supported; if a device
+            // does not support it, change SAMPLE_RATE here and in the client.
+            Log.e(TAG, "AudioRecord init failed @" + SAMPLE_RATE + "Hz (device may not support it)");
             throw new Exception("AudioRecord init failed @" + SAMPLE_RATE + "Hz");
         }
         byte[] buf = new byte[CHUNK];
@@ -117,7 +133,8 @@ public class MicService extends Service {
     }
 
     private void closeServer() {
-        if (server != null) try { server.close(); } catch (Exception ignore) {}
+        ServerSocket s = server;
+        if (s != null) try { s.close(); } catch (Exception ignore) {}
         server = null;
     }
 
