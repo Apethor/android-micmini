@@ -1,4 +1,4 @@
-package com.nubia.micmini;
+package com.apethor.micmini;
 
 import android.Manifest;
 import android.app.Activity;
@@ -8,13 +8,13 @@ import android.os.Build;
 import android.os.Bundle;
 import android.widget.TextView;
 
-/** Tela mínima: pede permissão de microfone e inicia o serviço TCP. */
+/** Minimal screen: requests the microphone permission and starts the TCP service. */
 public class MainActivity extends Activity {
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
         TextView tv = new TextView(this);
-        tv.setText("MicMini\n\nPCM TCP porta " + MicService.PORT
-                + "\n" + MicService.SAMPLE_RATE + " Hz mono s16le\n\nServidor iniciado.");
+        tv.setText("MicMini\n\nPCM over TCP, port " + MicService.PORT
+                + "\n" + MicService.SAMPLE_RATE + " Hz mono s16le\n\nServer started.");
         tv.setTextSize(20);
         tv.setPadding(40, 80, 40, 40);
         setContentView(tv);
