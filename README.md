@@ -46,5 +46,12 @@ C/qualquer linguagem é o mesmo: abrir socket TCP p/ `192.168.15.50:6000` e ler 
 
 Autostart no Batocera: colocar seu consumidor em `/userdata/system/scripts/` (shebang + LF).
 
+## ⚠️ Segurança / privacidade
+O servidor **não tem autenticação** e escuta em **todas as interfaces** (`0.0.0.0:6000`). Enquanto o
+serviço estiver rodando, **qualquer dispositivo na mesma rede pode conectar e ouvir o microfone**.
+Use **apenas em rede local confiável** (o caso de uso é um appliance numa LAN isolada). Para reduzir
+exposição: rode numa Wi-Fi isolada / com *client isolation*, ou pare o serviço quando não estiver
+usando. *(Roadmap: opção de bind só em localhost + token de acesso.)*
+
 ## Licença
 [MIT](LICENSE) © 2026 Guilherme Nicolino ([Apethor](https://github.com/Apethor)).
